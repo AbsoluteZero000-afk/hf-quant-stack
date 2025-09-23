@@ -1,0 +1,90 @@
+# Trading System Configuration
+trading:
+  timezone: "America/New_York"
+  market_hours:
+    start: "09:30"
+    end: "16:00"
+  trading_days: ["MON", "TUE", "WED", "THU", "FRI"]
+
+# Portfolio Configuration
+portfolio:
+  initial_capital: 100000
+  base_currency: "USD"
+  rebalancing_frequency: "daily"  # daily, weekly, monthly
+  cash_buffer_pct: 0.05  # Keep 5% cash buffer
+
+# Risk Management
+risk:
+  max_daily_loss_pct: 0.02
+  max_drawdown_pct: 0.10
+  max_position_size_pct: 0.05
+  max_sector_concentration_pct: 0.15
+  volatility_lookback_days: 21
+  kelly_fraction: 0.25  # Use 25% of Kelly criterion
+
+# Transaction Costs
+costs:
+  commission_per_share: 0.0  # Alpaca commission-free
+  slippage_bps: 5  # 5 basis points slippage
+  market_impact_coeff: 0.1
+
+# Data Configuration
+data:
+  provider: "alpaca"
+  universe_size: 100  # Top N liquid stocks
+  price_adjustment: "split_and_dividend"
+  min_price: 5.0  # Minimum stock price
+  min_volume: 1000000  # Minimum daily volume
+  lookback_days: 252  # 1 year of data for calculations
+
+# Backtesting Configuration
+backtest:
+  start_date: "2023-01-01"
+  end_date: "2024-01-01"
+  benchmark: "SPY"
+  rebalancing_time: "10:00"  # Rebalance at 10 AM
+  warmup_days: 60  # Days to warm up indicators
+
+# Strategy Configurations
+strategies:
+  momentum:
+    lookback_days: 21
+    top_n_stocks: 20
+    rebalance_frequency: "daily"
+    momentum_threshold: 0.02
+    
+  mean_reversion:
+    lookback_days: 20
+    zscore_threshold: 2.0
+    pairs_count: 10
+    half_life_days: 5
+    cointegration_window: 60
+    
+  risk_parity:
+    lookback_days: 60
+    rebalance_frequency: "weekly"
+    target_volatility: 0.15
+    min_weight: 0.01
+    max_weight: 0.10
+
+# Execution Configuration
+execution:
+  order_type: "market"  # market, limit
+  timeout_seconds: 30
+  max_retries: 3
+  position_exit_threshold: 0.005  # Close positions < 0.5% of portfolio
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/trading.log"
+  max_file_size_mb: 100
+  backup_count: 5
+
+# Monitoring & Alerts
+monitoring:
+  performance_report_frequency: "daily"
+  alert_on_drawdown_pct: 0.05
+  alert_on_daily_loss_pct: 0.015
+  healthcheck_interval_minutes: 5
