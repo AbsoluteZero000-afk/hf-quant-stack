@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    platform: linux/arm64
+    container_name: hf-postgres
+    environment:
+      POSTGRES_DB: hf_trading
+      POSTGRES_USER: hf_user
+      POSTGRES_PASSWORD: hf_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hf_user -d hf_trading"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: 
+      context: .
+      platform: linux/arm64
+    container_name: hf-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://hf_user:hf_password@postgres:5432/hf_trading
+      - ENVIRONMENT=development
+    env_file:
+      - .env
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./reports:/app/reports
+    command: streamlit run src/ui/dashboard.py --server.port=8501 --server.address=0.0.0.0
+
+  jupyter:
+    build: 
+      context: .
+      platform: linux/arm64
+    container_name: hf-jupyter
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://hf_user:hf_password@postgres:5432/hf_trading
+    env_file:
+      - .env
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - ./notebooks:/app/notebooks
+    command: jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
+
+volumes:
+  postgres_data:
