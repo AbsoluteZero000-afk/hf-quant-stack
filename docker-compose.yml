@@ -3,63 +3,100 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    platform: linux/arm64
-    container_name: hf-postgres
     environment:
-      POSTGRES_DB: hf_trading
-      POSTGRES_USER: hf_user
-      POSTGRES_PASSWORD: hf_password
-      POSTGRES_HOST_AUTH_METHOD: trust
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: trading_db
+      POSTGRES_USER: trader
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hf_user -d hf_trading"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U trader -d trading_db"]
+      interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   app:
-    build: 
+    build:
       context: .
-      platform: linux/arm64
-    container_name: hf-app
+      target: production
+    environment:
+      - DATABASE_URL=postgresql://trader:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+    volumes:
+      - ./data:/home/trader/data
+      - ./reports:/home/trader/reports
+      - ./logs:/home/trader/logs
+      - ./config.yml:/home/trader/config.yml:ro
+    ports:
+      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      - DATABASE_URL=postgresql://hf_user:hf_password@postgres:5432/hf_trading
-      - ENVIRONMENT=development
-    env_file:
-      - .env
-    ports:
-      - "8501:8501"
-    volumes:
-      - .:/app
-      - ./data:/app/data
-      - ./reports:/app/reports
-    command: streamlit run src/ui/dashboard.py --server.port=8501 --server.address=0.0.0.0
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   jupyter:
-    build: 
+    build:
       context: .
-      platform: linux/arm64
-    container_name: hf-jupyter
+      target: development
+    environment:
+      - DATABASE_URL=postgresql://trader:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/trading_db
+    volumes:
+      - .:/home/trader
+      - jupyter_data:/home/trader/.jupyter
+    ports:
+      - "8888:8888"
     depends_on:
       postgres:
         condition: service_healthy
+    profiles:
+      - dev
+    restart: unless-stopped
+
+  streamlit:
+    build:
+      context: .
+      target: production
+    command: ["streamlit", "run", "src/ui/dashboard.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
     environment:
-      - DATABASE_URL=postgresql://hf_user:hf_password@postgres:5432/hf_trading
-    env_file:
-      - .env
-    ports:
-      - "8888:8888"
+      - DATABASE_URL=postgresql://trader:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/trading_db
     volumes:
-      - .:/app
-      - ./notebooks:/app/notebooks
-    command: jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''
+      - ./data:/home/trader/data:ro
+      - ./reports:/home/trader/reports:ro
+    ports:
+      - "8501:8501"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - dashboard
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:
+  jupyter_data:
+
+networks:
+  default:
+    name: hf-quant-stack
+    driver: bridge
