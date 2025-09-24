@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: trading_db
+      POSTGRES_USER: trader
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trader -d trading_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      target: production
+    environment:
+      - DATABASE_URL=postgresql://trader:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/trading_db
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+    volumes:
+      - ./data:/home/trader/data
+      - ./reports:/home/trader/reports
+      - ./logs:/home/trader/logs
+      - ./config.yml:/home/trader/config.yml:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  jupyter:
+    build:
+      context: .
+      target: development
+    environment:
+      - DATABASE_URL=postgresql://trader:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/trading_db
+    volumes:
+      - .:/home/trader
+      - jupyter_data:/home/trader/.jupyter
+    ports:
+      - "8888:8888"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - dev
+    restart: unless-stopped
+
+  streamlit:
+    build:
+      context: .
+      target: production
+    command: ["streamlit", "run", "src/ui/dashboard.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+    environment:
+      - DATABASE_URL=postgresql://trader:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/trading_db
+    volumes:
+      - ./data:/home/trader/data:ro
+      - ./reports:/home/trader/reports:ro
+    ports:
+      - "8501:8501"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - dashboard
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  jupyter_data:
+
+networks:
+  default:
+    name: hf-quant-stack
+    driver: bridge

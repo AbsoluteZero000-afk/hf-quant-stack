@@ -1,0 +1,92 @@
+# HF Quant Stack Configuration
+
+# Trading Configuration
+trading:
+  timezone: "America/New_York"
+  market_hours:
+    start: "09:30"
+    end: "16:00"
+
+# Portfolio Configuration
+portfolio:
+  initial_capital: 100000.0
+  currency: "USD"
+  benchmark: "SPY"
+
+# Risk Management
+risk:
+  max_daily_loss_pct: 0.02  # 2% daily loss limit
+  max_drawdown_pct: 0.10    # 10% maximum drawdown
+  max_position_size_pct: 0.05 # 5% max position size
+  kelly_fraction: 0.25       # Kelly criterion fraction
+  volatility_lookback_days: 21
+
+# Transaction Costs
+costs:
+  commission_per_share: 0.0  # Commission per share
+  slippage_bps: 5.0         # Slippage in basis points
+  market_impact_coeff: 0.1   # Market impact coefficient
+
+# Backtesting Configuration
+backtest:
+  start_date: "2023-01-01"
+  end_date: "2024-01-01"
+  initial_capital: 100000.0
+  rebalance_frequency: "daily"
+  benchmark: "SPY"
+
+# Strategy Configurations
+strategies:
+  momentum:
+    lookback_days: 21
+    top_n_stocks: 20
+    momentum_threshold: 0.02
+    rebalance_frequency: "daily"
+    universe_size: 50
+    
+  mean_reversion:
+    lookback_days: 20
+    zscore_threshold: 2.0
+    pairs_count: 10
+    half_life_days: 5
+    cointegration_window: 60
+    universe_size: 100
+    
+  risk_parity:
+    lookback_days: 60
+    target_volatility: 0.15
+    rebalance_frequency: "weekly"
+    min_weight: 0.01
+    max_weight: 0.10
+    universe_size: 100
+
+# Data Configuration
+data:
+  sources:
+    primary: "alpaca"
+    backup: "sample"
+  cache_duration_hours: 24
+  max_history_days: 1000
+  
+# Universe Selection
+universe:
+  sp500:
+    min_price: 5.0
+    min_volume: 1000000
+    min_market_cap: 1000000000  # $1B
+    max_symbols: 500
+    
+  liquid:
+    min_price: 5.0
+    min_volume: 2000000
+    min_market_cap: 500000000   # $500M
+    max_symbols: 200
+    lookback_days: 30
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
+  rotation: "10 MB"
+  retention: "30 days"
+  compression: "zip"
