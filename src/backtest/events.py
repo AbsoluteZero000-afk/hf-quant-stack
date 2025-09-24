@@ -7,6 +7,7 @@ from typing import Dict, Optional
 
 class Event(ABC):
     """Base class for all events in the backtesting system."""
+
     pass
 
 
@@ -21,7 +22,9 @@ class BarEvent(Event):
             bars: Dictionary of symbol -> OHLCV data
         """
         self.timestamp = timestamp
-        self.bars = bars  # {symbol: {'open': x, 'high': x, 'low': x, 'close': x, 'volume': x}}
+        self.bars = (
+            bars  # {symbol: {'open': x, 'high': x, 'low': x, 'close': x, 'volume': x}}
+        )
 
     def get_bar(self, symbol: str) -> Optional[Dict[str, float]]:
         """Get bar data for a symbol.
@@ -69,9 +72,9 @@ class OrderEvent(Event):
         self.direction = direction.upper()
         self.limit_price = limit_price
         self.stop_price = stop_price
-        
+
         # Calculated fields
-        self.signed_quantity = quantity if direction.upper() == 'BUY' else -quantity
+        self.signed_quantity = quantity if direction.upper() == "BUY" else -quantity
 
     def __repr__(self) -> str:
         return f"OrderEvent({self.direction} {self.quantity} {self.symbol} {self.order_type})"
@@ -108,9 +111,9 @@ class FillEvent(Event):
         self.fill_price = fill_price
         self.commission = commission
         self.slippage = slippage
-        
+
         # Calculated fields
-        self.signed_quantity = quantity if direction.upper() == 'BUY' else -quantity
+        self.signed_quantity = quantity if direction.upper() == "BUY" else -quantity
         self.gross_amount = self.quantity * self.fill_price
         self.net_amount = self.gross_amount - self.commission
 

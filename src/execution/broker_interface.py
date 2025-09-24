@@ -50,15 +50,15 @@ class BrokerInterface:
             List of submitted orders
         """
         submitted_orders = []
-        
+
         with get_db_session() as session:
             # Get current positions
             current_positions = self.execution_handler.get_positions()
-            
+
             # Get assets for symbols
             symbols = set(target_positions.keys()) | set(current_positions.keys())
             assets = {}
-            
+
             for symbol in symbols:
                 asset = session.query(Asset).filter(Asset.symbol == symbol).first()
                 if not asset:
@@ -72,23 +72,23 @@ class BrokerInterface:
                     )
                     session.add(asset)
                     session.flush()
-                
+
                 assets[symbol] = asset
-            
+
             # Create orders for position changes
             for symbol in symbols:
                 current_qty = current_positions.get(symbol, 0.0)
                 target_qty = target_positions.get(symbol, 0.0)
-                
+
                 qty_diff = target_qty - current_qty
-                
+
                 # Only create order if change is significant
                 if abs(qty_diff) < 0.001:
                     continue
-                
+
                 # Determine order side
                 side = OrderSide.BUY if qty_diff > 0 else OrderSide.SELL
-                
+
                 # Create order
                 order = Order(
                     portfolio_id=portfolio.id,
@@ -98,19 +98,19 @@ class BrokerInterface:
                     quantity=abs(qty_diff),
                     status=OrderStatus.PENDING,
                 )
-                
+
                 session.add(order)
                 session.flush()  # Get order ID
-                
+
                 # Submit to broker
                 if self.execution_handler.submit_order(order):
                     submitted_orders.append(order)
                     self.logger.info(f"Submitted order: {order}")
                 else:
                     self.logger.error(f"Failed to submit order: {order}")
-            
+
             session.commit()
-        
+
         return submitted_orders
 
     def sync_orders(self, portfolio_id: int) -> None:
@@ -125,14 +125,16 @@ class BrokerInterface:
                 session.query(Order)
                 .filter(
                     Order.portfolio_id == portfolio_id,
-                    Order.status.in_([OrderStatus.SUBMITTED, OrderStatus.PARTIALLY_FILLED])
+                    Order.status.in_(
+                        [OrderStatus.SUBMITTED, OrderStatus.PARTIALLY_FILLED]
+                    ),
                 )
                 .all()
             )
-            
-            if hasattr(self.execution_handler, 'sync_orders'):
+
+            if hasattr(self.execution_handler, "sync_orders"):
                 self.execution_handler.sync_orders(orders)
-            
+
             session.commit()
 
     def cancel_all_orders(self, portfolio_id: int) -> int:
@@ -145,18 +147,18 @@ class BrokerInterface:
             Number of orders cancelled
         """
         cancelled_count = 0
-        
+
         with get_db_session() as session:
             # Get cancellable orders
             orders = (
                 session.query(Order)
                 .filter(
                     Order.portfolio_id == portfolio_id,
-                    Order.status.in_([OrderStatus.SUBMITTED, OrderStatus.PENDING])
+                    Order.status.in_([OrderStatus.SUBMITTED, OrderStatus.PENDING]),
                 )
                 .all()
             )
-            
+
             for order in orders:
                 if order.broker_order_id:
                     if self.execution_handler.cancel_order(order.broker_order_id):
@@ -169,9 +171,9 @@ class BrokerInterface:
                     # Order not yet submitted to broker
                     order.status = OrderStatus.CANCELLED
                     cancelled_count += 1
-            
+
             session.commit()
-        
+
         return cancelled_count
 
     def get_account_summary(self) -> Dict:
@@ -182,11 +184,11 @@ class BrokerInterface:
         """
         account_info = self.execution_handler.get_account_info()
         positions = self.execution_handler.get_positions()
-        
+
         return {
-            'account_info': account_info,
-            'positions': positions,
-            'is_connected': self.execution_handler.is_connected(),
+            "account_info": account_info,
+            "positions": positions,
+            "is_connected": self.execution_handler.is_connected(),
         }
 
     def create_manual_order(
@@ -223,7 +225,7 @@ class BrokerInterface:
                 )
                 session.add(asset)
                 session.flush()
-            
+
             # Create order
             order = Order(
                 portfolio_id=portfolio_id,
@@ -235,10 +237,10 @@ class BrokerInterface:
                 status=OrderStatus.PENDING,
                 notes="Manual order",
             )
-            
+
             session.add(order)
             session.flush()
-            
+
             # Submit to broker
             if self.execution_handler.submit_order(order):
                 session.commit()

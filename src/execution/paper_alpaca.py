@@ -3,11 +3,13 @@
 from typing import Dict, List, Optional
 
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
 
 from src.config import config
-from src.db.models import Order, OrderType, OrderSide as DbOrderSide, OrderStatus
+from src.db.models import Order
+from src.db.models import OrderSide as DbOrderSide
+from src.db.models import OrderStatus, OrderType
 from src.execution.base import ExecutionHandler
 from src.utils.logging import get_logger
 
@@ -25,11 +27,13 @@ class PaperAlpacaExecutionHandler(ExecutionHandler):
             paper=True,  # Always use paper trading for safety
         )
         self.logger = logger
-        
+
         # Test connection
         try:
             account = self.client.get_account()
-            self.logger.info(f"Connected to Alpaca paper trading account: {account.account_number}")
+            self.logger.info(
+                f"Connected to Alpaca paper trading account: {account.account_number}"
+            )
         except Exception as e:
             self.logger.error(f"Failed to connect to Alpaca: {e}")
             raise
@@ -49,7 +53,7 @@ class PaperAlpacaExecutionHandler(ExecutionHandler):
                 alpaca_side = OrderSide.BUY
             else:
                 alpaca_side = OrderSide.SELL
-            
+
             # Create order request based on type
             if order.order_type == OrderType.MARKET:
                 order_request = MarketOrderRequest(
@@ -62,7 +66,7 @@ class PaperAlpacaExecutionHandler(ExecutionHandler):
                 if not order.limit_price:
                     self.logger.error("Limit price required for limit orders")
                     return False
-                
+
                 order_request = LimitOrderRequest(
                     symbol=order.asset.symbol,
                     qty=order.quantity,
@@ -73,22 +77,22 @@ class PaperAlpacaExecutionHandler(ExecutionHandler):
             else:
                 self.logger.error(f"Unsupported order type: {order.order_type}")
                 return False
-            
+
             # Submit order
             alpaca_order = self.client.submit_order(order_request)
-            
+
             # Update order with broker ID
             order.broker_order_id = alpaca_order.id
             order.status = OrderStatus.SUBMITTED
             order.submitted_at = alpaca_order.submitted_at
-            
+
             self.logger.info(
                 f"Submitted order: {order.side.value} {order.quantity} {order.asset.symbol} "
                 f"(Broker ID: {alpaca_order.id})"
             )
-            
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Error submitting order: {e}")
             order.status = OrderStatus.REJECTED
@@ -123,21 +127,23 @@ class PaperAlpacaExecutionHandler(ExecutionHandler):
         """
         try:
             alpaca_order = self.client.get_order_by_id(order_id)
-            
+
             return {
-                'id': alpaca_order.id,
-                'status': alpaca_order.status.value,
-                'symbol': alpaca_order.symbol,
-                'quantity': float(alpaca_order.qty),
-                'filled_quantity': float(alpaca_order.filled_qty or 0),
-                'side': alpaca_order.side.value,
-                'order_type': alpaca_order.order_type.value,
-                'limit_price': float(alpaca_order.limit_price) if alpaca_order.limit_price else None,
-                'submitted_at': alpaca_order.submitted_at,
-                'filled_at': alpaca_order.filled_at,
-                'cancelled_at': alpaca_order.cancelled_at,
+                "id": alpaca_order.id,
+                "status": alpaca_order.status.value,
+                "symbol": alpaca_order.symbol,
+                "quantity": float(alpaca_order.qty),
+                "filled_quantity": float(alpaca_order.filled_qty or 0),
+                "side": alpaca_order.side.value,
+                "order_type": alpaca_order.order_type.value,
+                "limit_price": float(alpaca_order.limit_price)
+                if alpaca_order.limit_price
+                else None,
+                "submitted_at": alpaca_order.submitted_at,
+                "filled_at": alpaca_order.filled_at,
+                "cancelled_at": alpaca_order.cancelled_at,
             }
-            
+
         except Exception as e:
             self.logger.error(f"Error getting order status for {order_id}: {e}")
             return None
@@ -150,13 +156,13 @@ class PaperAlpacaExecutionHandler(ExecutionHandler):
         """
         try:
             positions = self.client.get_all_positions()
-            
+
             position_dict = {}
             for position in positions:
                 position_dict[position.symbol] = float(position.qty)
-            
+
             return position_dict
-            
+
         except Exception as e:
             self.logger.error(f"Error getting positions: {e}")
             return {}
@@ -169,24 +175,24 @@ class PaperAlpacaExecutionHandler(ExecutionHandler):
         """
         try:
             account = self.client.get_account()
-            
+
             return {
-                'account_number': account.account_number,
-                'status': account.status.value,
-                'currency': account.currency,
-                'cash': float(account.cash),
-                'portfolio_value': float(account.portfolio_value),
-                'buying_power': float(account.buying_power),
-                'equity': float(account.equity),
-                'last_equity': float(account.last_equity),
-                'multiplier': float(account.multiplier),
-                'day_trade_count': int(account.day_trade_count),
-                'day_trading_buying_power': float(account.day_trading_buying_power),
-                'regt_buying_power': float(account.regt_buying_power),
-                'initial_margin': float(account.initial_margin),
-                'maintenance_margin': float(account.maintenance_margin),
+                "account_number": account.account_number,
+                "status": account.status.value,
+                "currency": account.currency,
+                "cash": float(account.cash),
+                "portfolio_value": float(account.portfolio_value),
+                "buying_power": float(account.buying_power),
+                "equity": float(account.equity),
+                "last_equity": float(account.last_equity),
+                "multiplier": float(account.multiplier),
+                "day_trade_count": int(account.day_trade_count),
+                "day_trading_buying_power": float(account.day_trading_buying_power),
+                "regt_buying_power": float(account.regt_buying_power),
+                "initial_margin": float(account.initial_margin),
+                "maintenance_margin": float(account.maintenance_margin),
             }
-            
+
         except Exception as e:
             self.logger.error(f"Error getting account info: {e}")
             return {}
@@ -210,46 +216,49 @@ class PaperAlpacaExecutionHandler(ExecutionHandler):
             db_orders: List of database orders to sync
         """
         for order in db_orders:
-            if order.broker_order_id and order.status in [OrderStatus.SUBMITTED, OrderStatus.PARTIALLY_FILLED]:
+            if order.broker_order_id and order.status in [
+                OrderStatus.SUBMITTED,
+                OrderStatus.PARTIALLY_FILLED,
+            ]:
                 alpaca_status = self.get_order_status(order.broker_order_id)
-                
+
                 if alpaca_status:
                     # Update order status
                     status_mapping = {
-                        'new': OrderStatus.SUBMITTED,
-                        'partially_filled': OrderStatus.PARTIALLY_FILLED,
-                        'filled': OrderStatus.FILLED,
-                        'done_for_day': OrderStatus.CANCELLED,
-                        'canceled': OrderStatus.CANCELLED,
-                        'expired': OrderStatus.CANCELLED,
-                        'replaced': OrderStatus.CANCELLED,
-                        'pending_cancel': OrderStatus.PENDING,
-                        'pending_replace': OrderStatus.PENDING,
-                        'accepted': OrderStatus.SUBMITTED,
-                        'pending_new': OrderStatus.PENDING,
-                        'accepted_for_bidding': OrderStatus.SUBMITTED,
-                        'stopped': OrderStatus.CANCELLED,
-                        'rejected': OrderStatus.REJECTED,
-                        'suspended': OrderStatus.CANCELLED,
-                        'calculated': OrderStatus.PENDING,
+                        "new": OrderStatus.SUBMITTED,
+                        "partially_filled": OrderStatus.PARTIALLY_FILLED,
+                        "filled": OrderStatus.FILLED,
+                        "done_for_day": OrderStatus.CANCELLED,
+                        "canceled": OrderStatus.CANCELLED,
+                        "expired": OrderStatus.CANCELLED,
+                        "replaced": OrderStatus.CANCELLED,
+                        "pending_cancel": OrderStatus.PENDING,
+                        "pending_replace": OrderStatus.PENDING,
+                        "accepted": OrderStatus.SUBMITTED,
+                        "pending_new": OrderStatus.PENDING,
+                        "accepted_for_bidding": OrderStatus.SUBMITTED,
+                        "stopped": OrderStatus.CANCELLED,
+                        "rejected": OrderStatus.REJECTED,
+                        "suspended": OrderStatus.CANCELLED,
+                        "calculated": OrderStatus.PENDING,
                     }
-                    
+
                     new_status = status_mapping.get(
-                        alpaca_status['status'], OrderStatus.PENDING
+                        alpaca_status["status"], OrderStatus.PENDING
                     )
-                    
+
                     if order.status != new_status:
                         self.logger.info(
                             f"Order {order.broker_order_id} status: "
                             f"{order.status.value} -> {new_status.value}"
                         )
                         order.status = new_status
-                        
+
                         # Update fill information
                         if new_status == OrderStatus.FILLED:
-                            order.filled_quantity = alpaca_status['filled_quantity']
-                            order.filled_at = alpaca_status['filled_at']
+                            order.filled_quantity = alpaca_status["filled_quantity"]
+                            order.filled_at = alpaca_status["filled_at"]
                         elif new_status == OrderStatus.PARTIALLY_FILLED:
-                            order.filled_quantity = alpaca_status['filled_quantity']
+                            order.filled_quantity = alpaca_status["filled_quantity"]
                         elif new_status == OrderStatus.CANCELLED:
-                            order.cancelled_at = alpaca_status['cancelled_at']
+                            order.cancelled_at = alpaca_status["cancelled_at"]

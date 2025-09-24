@@ -31,19 +31,111 @@ class UniverseSelector:
         """
         # Simplified S&P 500 list - in production, this would be fetched from a data provider
         sp500_symbols = [
-            "AAPL", "MSFT", "AMZN", "GOOGL", "GOOG", "TSLA", "BRK.B", "UNH", "JNJ", "META",
-            "NVDA", "JPM", "V", "PG", "XOM", "HD", "CVX", "PFE", "MA", "BAC",
-            "ABBV", "KO", "AVGO", "PEP", "COST", "TMO", "WMT", "DIS", "ABT", "ACN",
-            "MRK", "VZ", "NFLX", "ADBE", "CRM", "NKE", "DHR", "TXN", "NEE", "RTX",
-            "CMCSA", "ORCL", "QCOM", "WFC", "UPS", "PM", "T", "HON", "IBM", "SPGI",
-            "LOW", "AMD", "GS", "CAT", "INTU", "CVS", "AXP", "BLK", "DE", "LMT",
-            "MS", "ISRG", "AMGN", "BKNG", "GE", "AMD", "MU", "SYK", "ADP", "NOW",
-            "TJX", "SCHW", "ZTS", "PLD", "ADI", "GILD", "CB", "MO", "DUK", "PYPL",
-            "CI", "ICE", "SO", "EQIX", "AON", "SHW", "CL", "APD", "D", "ITW",
-            "USB", "CSX", "MMC", "REGN", "EL", "NOC", "FCX", "PGR", "BSX", "BDX"
+            "AAPL",
+            "MSFT",
+            "AMZN",
+            "GOOGL",
+            "GOOG",
+            "TSLA",
+            "BRK.B",
+            "UNH",
+            "JNJ",
+            "META",
+            "NVDA",
+            "JPM",
+            "V",
+            "PG",
+            "XOM",
+            "HD",
+            "CVX",
+            "PFE",
+            "MA",
+            "BAC",
+            "ABBV",
+            "KO",
+            "AVGO",
+            "PEP",
+            "COST",
+            "TMO",
+            "WMT",
+            "DIS",
+            "ABT",
+            "ACN",
+            "MRK",
+            "VZ",
+            "NFLX",
+            "ADBE",
+            "CRM",
+            "NKE",
+            "DHR",
+            "TXN",
+            "NEE",
+            "RTX",
+            "CMCSA",
+            "ORCL",
+            "QCOM",
+            "WFC",
+            "UPS",
+            "PM",
+            "T",
+            "HON",
+            "IBM",
+            "SPGI",
+            "LOW",
+            "AMD",
+            "GS",
+            "CAT",
+            "INTU",
+            "CVS",
+            "AXP",
+            "BLK",
+            "DE",
+            "LMT",
+            "MS",
+            "ISRG",
+            "AMGN",
+            "BKNG",
+            "GE",
+            "AMD",
+            "MU",
+            "SYK",
+            "ADP",
+            "NOW",
+            "TJX",
+            "SCHW",
+            "ZTS",
+            "PLD",
+            "ADI",
+            "GILD",
+            "CB",
+            "MO",
+            "DUK",
+            "PYPL",
+            "CI",
+            "ICE",
+            "SO",
+            "EQIX",
+            "AON",
+            "SHW",
+            "CL",
+            "APD",
+            "D",
+            "ITW",
+            "USB",
+            "CSX",
+            "MMC",
+            "REGN",
+            "EL",
+            "NOC",
+            "FCX",
+            "PGR",
+            "BSX",
+            "BDX",
         ]
-        
-        self.logger.info(f"Retrieved S&P 500 universe with {len(sp500_symbols)} symbols")
+
+        self.logger.info(
+            f"Retrieved S&P 500 universe with {len(sp500_symbols)} symbols"
+        )
         return sp500_symbols
 
     def get_liquid_universe(
@@ -73,46 +165,45 @@ class UniverseSelector:
 
         # Start with S&P 500 universe
         base_universe = self.get_sp500_universe()
-        
+
         # Get recent data for filtering
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days + 10)  # Extra buffer
-        
+
         try:
             df = self.data_fetcher.get_bars(
-                symbols=base_universe,
-                start_date=start_date,
-                end_date=end_date
+                symbols=base_universe, start_date=start_date, end_date=end_date
             )
-            
+
             if df.empty:
                 self.logger.warning("No data available for universe filtering")
                 return base_universe[:max_symbols]
 
             # Calculate average price and volume per symbol
-            symbol_stats = df.groupby('symbol').agg({
-                'close': 'mean',
-                'volume': 'mean'
-            }).round(2)
-            
-            symbol_stats.columns = ['avg_price', 'avg_volume']
-            
+            symbol_stats = (
+                df.groupby("symbol").agg({"close": "mean", "volume": "mean"}).round(2)
+            )
+
+            symbol_stats.columns = ["avg_price", "avg_volume"]
+
             # Apply filters
             filtered_symbols = symbol_stats[
-                (symbol_stats['avg_price'] >= min_price) &
-                (symbol_stats['avg_volume'] >= min_volume)
+                (symbol_stats["avg_price"] >= min_price)
+                & (symbol_stats["avg_volume"] >= min_volume)
             ]
-            
+
             # Sort by volume (liquidity) and take top N
-            filtered_symbols = filtered_symbols.sort_values('avg_volume', ascending=False)
+            filtered_symbols = filtered_symbols.sort_values(
+                "avg_volume", ascending=False
+            )
             liquid_universe = filtered_symbols.head(max_symbols).index.tolist()
-            
+
             self.logger.info(
                 f"Filtered universe: {len(base_universe)} -> {len(liquid_universe)} symbols"
             )
-            
+
             return liquid_universe
-            
+
         except Exception as e:
             self.logger.error(f"Error filtering universe: {e}")
             # Fallback to top symbols from base universe
@@ -128,17 +219,33 @@ class UniverseSelector:
             List of sample symbols
         """
         sample_symbols = [
-            "AAPL", "MSFT", "AMZN", "GOOGL", "TSLA", "META", "NVDA", "JPM", "V", "UNH",
-            "JNJ", "PG", "HD", "MA", "DIS", "NFLX", "KO", "PFE", "VZ", "WMT"
+            "AAPL",
+            "MSFT",
+            "AMZN",
+            "GOOGL",
+            "TSLA",
+            "META",
+            "NVDA",
+            "JPM",
+            "V",
+            "UNH",
+            "JNJ",
+            "PG",
+            "HD",
+            "MA",
+            "DIS",
+            "NFLX",
+            "KO",
+            "PFE",
+            "VZ",
+            "WMT",
         ]
-        
-        result = sample_symbols[:min(size, len(sample_symbols))]
+
+        result = sample_symbols[: min(size, len(sample_symbols))]
         self.logger.info(f"Retrieved sample universe with {len(result)} symbols")
         return result
 
-    def filter_by_sector(
-        self, symbols: List[str], sectors: List[str]
-    ) -> List[str]:
+    def filter_by_sector(self, symbols: List[str], sectors: List[str]) -> List[str]:
         """Filter symbols by sector (placeholder implementation).
 
         Args:
@@ -152,9 +259,7 @@ class UniverseSelector:
         self.logger.warning("Sector filtering not implemented - returning all symbols")
         return symbols
 
-    def get_universe_by_strategy(
-        self, strategy: str, **kwargs
-    ) -> List[str]:
+    def get_universe_by_strategy(self, strategy: str, **kwargs) -> List[str]:
         """Get universe tailored for specific strategy.
 
         Args:
@@ -167,16 +272,15 @@ class UniverseSelector:
         if strategy == "momentum":
             return self.get_liquid_universe(
                 min_volume=2000000,  # Higher volume for momentum
-                max_symbols=kwargs.get("universe_size", 50)
+                max_symbols=kwargs.get("universe_size", 50),
             )
         elif strategy == "mean_reversion":
             return self.get_liquid_universe(
-                min_volume=1000000,
-                max_symbols=kwargs.get("universe_size", 100)
+                min_volume=1000000, max_symbols=kwargs.get("universe_size", 100)
             )
         elif strategy == "risk_parity":
             # For risk parity, we want diversified sectors
-            return self.get_sp500_universe()[:kwargs.get("universe_size", 100)]
+            return self.get_sp500_universe()[: kwargs.get("universe_size", 100)]
         elif strategy == "sample":
             return self.get_sample_universe(kwargs.get("universe_size", 20))
         else:

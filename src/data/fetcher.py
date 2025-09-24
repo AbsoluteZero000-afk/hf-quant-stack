@@ -104,13 +104,13 @@ class AlpacaDataFetcher(DataFetcher):
             )
 
             bars = self.client.get_stock_bars(request)
-            
+
             if bars.df.empty:
                 logger.warning("No data received from Alpaca")
                 return pd.DataFrame()
 
             df = bars.df.reset_index()
-            
+
             # Rename columns to standard format
             df = df.rename(
                 columns={
@@ -152,7 +152,7 @@ class AlpacaDataFetcher(DataFetcher):
             start_date = end_date - timedelta(days=7)  # Get last week to ensure data
 
             df = self.get_bars(symbols, start_date, end_date, "1Day")
-            
+
             if df.empty:
                 logger.warning("No price data available")
                 return {}
@@ -205,37 +205,41 @@ class SampleDataFetcher(DataFetcher):
             dates = pd.bdate_range(start=start_date, end=end_date)
 
         data_list = []
-        
+
         for symbol in symbols:
             # Generate random walk price data
             np.random.seed(hash(symbol) % 2**32)  # Consistent seed per symbol
             n_days = len(dates)
-            
+
             # Starting price based on symbol hash for consistency
             base_price = 50 + (hash(symbol) % 100)
-            
+
             # Generate returns with some volatility
-            returns = np.random.normal(0.0005, 0.02, n_days)  # ~0.05% daily return, 2% volatility
+            returns = np.random.normal(
+                0.0005, 0.02, n_days
+            )  # ~0.05% daily return, 2% volatility
             prices = base_price * np.exp(np.cumsum(returns))
-            
+
             for i, date in enumerate(dates):
                 price = prices[i]
                 # Generate OHLC from close price
                 high = price * (1 + abs(np.random.normal(0, 0.01)))
                 low = price * (1 - abs(np.random.normal(0, 0.01)))
                 open_price = low + (high - low) * np.random.random()
-                
+
                 volume = int(np.random.normal(1000000, 200000))  # Average 1M volume
-                
-                data_list.append({
-                    "symbol": symbol,
-                    "datetime": date,
-                    "open": round(open_price, 2),
-                    "high": round(high, 2),
-                    "low": round(low, 2),
-                    "close": round(price, 2),
-                    "volume": max(volume, 100000),  # Minimum volume
-                })
+
+                data_list.append(
+                    {
+                        "symbol": symbol,
+                        "datetime": date,
+                        "open": round(open_price, 2),
+                        "high": round(high, 2),
+                        "low": round(low, 2),
+                        "close": round(price, 2),
+                        "volume": max(volume, 100000),  # Minimum volume
+                    }
+                )
 
         df = pd.DataFrame(data_list)
         logger.info(f"Generated {len(df)} sample bars")
@@ -251,11 +255,11 @@ class SampleDataFetcher(DataFetcher):
             Dictionary mapping symbol to sample price
         """
         import numpy as np
-        
+
         prices = {}
         for symbol in symbols:
             # Generate consistent price based on symbol
             np.random.seed(hash(symbol) % 2**32)
             prices[symbol] = round(50 + np.random.random() * 100, 2)
-        
+
         return prices

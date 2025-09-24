@@ -117,9 +117,7 @@ class Config:
         return AlpacaConfig(
             api_key=api_key,
             secret_key=secret_key,
-            base_url=os.getenv(
-                "ALPACA_BASE_URL", "https://paper-api.alpaca.markets"
-            ),
+            base_url=os.getenv("ALPACA_BASE_URL", "https://paper-api.alpaca.markets"),
         )
 
     def _get_risk_config(self) -> RiskConfig:

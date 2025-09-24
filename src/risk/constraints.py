@@ -131,11 +131,11 @@ class RiskConstraints:
         """
         # Basic leverage check
         total_gross_exposure = sum(abs(value) for value in target_positions.values())
-        
+
         if current_portfolio_value > 0:
             leverage = total_gross_exposure / current_portfolio_value
             max_leverage = 1.5  # 150% gross exposure limit
-            
+
             if leverage > max_leverage:
                 # Scale down positions proportionally
                 scale_factor = max_leverage / leverage
@@ -143,12 +143,12 @@ class RiskConstraints:
                     symbol: value * scale_factor
                     for symbol, value in target_positions.items()
                 }
-                
+
                 self.logger.warning(
                     f"Portfolio leverage ({leverage:.2f}) exceeds maximum ({max_leverage:.2f}). "
                     f"Scaling positions by {scale_factor:.3f}"
                 )
-                
+
                 return (
                     False,
                     f"Leverage {leverage:.2f} > {max_leverage:.2f}",
@@ -189,7 +189,7 @@ class RiskConstraints:
             is_valid, reason, adjusted_value = self.check_position_size(
                 symbol, value, portfolio_value
             )
-            
+
             if not is_valid:
                 all_valid = False
                 messages.append(f"{symbol}: {reason}")
@@ -200,7 +200,7 @@ class RiskConstraints:
             is_valid, reason, adjusted_positions = self.check_sector_concentration(
                 final_positions, sector_map
             )
-            
+
             if not is_valid:
                 all_valid = False
                 messages.append(f"Sector: {reason}")
@@ -210,7 +210,7 @@ class RiskConstraints:
         is_valid, reason, adjusted_positions = self.check_portfolio_risk(
             final_positions, portfolio_value, volatility_estimates
         )
-        
+
         if not is_valid:
             all_valid = False
             messages.append(f"Portfolio: {reason}")
